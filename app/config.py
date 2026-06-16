@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     google_calendar_id: str | None = None
     google_application_credentials: str | None = None
 
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    owner_email: str | None = None
+
     business_timezone: str = "America/New_York"
     business_name: str = "Example Business"
     business_phone: str = Field(default="+15555550100")

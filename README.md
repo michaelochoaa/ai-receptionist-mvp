@@ -11,6 +11,7 @@ This repository is scaffolded as a Python FastAPI service that can receive voice
 - Use OpenAI to classify intent and produce receptionist responses
 - Check Google Calendar availability and create appointment events
 - Store captured leads in a local SQLite database
+- Notify the business owner by email when a lead is captured
 - Provide health checks and simple integration seams for deployment
 
 ## Project structure
@@ -31,6 +32,7 @@ app/
       system.md          # receptionist behavior prompt
   services/
     calendar_service.py  # Google Calendar integration
+    email_service.py     # SMTP owner notifications
     lead_store.py        # SQLite lead persistence
     openai_service.py    # OpenAI integration
     twilio_service.py    # Twilio response helpers
@@ -83,6 +85,19 @@ tests/
    GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\service-account.json
    ```
 
+7. To send real owner email notifications, set:
+
+   ```text
+   SMTP_HOST=smtp.example.com
+   SMTP_PORT=587
+   SMTP_USERNAME=your_smtp_username
+   SMTP_PASSWORD=your_smtp_password
+   SMTP_FROM_EMAIL=receptionist@example.com
+   OWNER_EMAIL=owner@example.com
+   ```
+
+   If these values are blank, the app logs the formatted owner notification instead of sending email.
+
 ## Run locally
 
 Start the API:
@@ -131,6 +146,8 @@ Run these commands in a second PowerShell window while the API is running.
 
 The sample payload represents a painting company estimate request from Maria Gomez. The app should capture her name, phone number, exterior painting estimate service, June 18, 2026 at 2:00 PM preferred start time, June 18, 2026 at 3:00 PM preferred end time, and `book_appointment` intent.
 
+When that lead is captured, the app also prepares an owner email summary with caller name, phone, service requested, preferred time, notes, and call ID. Without SMTP settings, the summary appears in the app logs.
+
 The SQLite database is created automatically at `data/leads.db`. The `data/` directory is ignored by Git so local test data stays local.
 
 ## Provider setup checklist
@@ -139,6 +156,7 @@ The SQLite database is created automatically at `data/leads.db`. The `data/` dir
 - Twilio: point the phone number voice webhook to `/webhooks/twilio/voice`
 - OpenAI: set `OPENAI_API_KEY`
 - Google Calendar: set `GOOGLE_APPLICATION_CREDENTIALS` and `GOOGLE_CALENDAR_ID`
+- SMTP: set `SMTP_HOST`, `SMTP_FROM_EMAIL`, and `OWNER_EMAIL` to enable owner notifications
 
 For local webhook testing, expose the server with a tunnel such as ngrok and configure provider webhooks to the public tunnel URL.
 

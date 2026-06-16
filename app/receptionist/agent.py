@@ -2,6 +2,7 @@ import logging
 
 from app.models import AppointmentRequest, ReceptionistIntent, ReceptionistRequest, ReceptionistResponse
 from app.services.calendar_service import GoogleCalendarService
+from app.services.email_service import OwnerEmailNotificationService
 from app.services.lead_extractor import DeterministicLeadExtractor
 from app.services.lead_store import LeadStore
 from app.services.openai_service import OpenAIReceptionistService
@@ -15,11 +16,14 @@ class ReceptionistAgent:
         self.openai = OpenAIReceptionistService()
         self.calendar = GoogleCalendarService()
         self.leads = LeadStore()
+        self.notifications = OwnerEmailNotificationService()
 
     async def handle(self, request: ReceptionistRequest) -> ReceptionistResponse:
         baseline = self.extractor.extract(request)
         response = await self.openai.complete(request, baseline)
-        self.leads.save_from_receptionist(request, response)
+        lead_id = self.leads.save_from_receptionist(request, response)
+        if lead_id is not None:
+            self.notifications.notify_lead_captured(request, response)
 
         if response.should_book and response.intent == ReceptionistIntent.book_appointment:
             await self._try_booking(response)
