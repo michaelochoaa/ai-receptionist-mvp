@@ -170,4 +170,5 @@ def test_available_slots_endpoint_marks_demo_mode(monkeypatch) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["demo_mode"] is True
+    assert isinstance(body["slots"], list)
     assert len(body["slots"]) == 2

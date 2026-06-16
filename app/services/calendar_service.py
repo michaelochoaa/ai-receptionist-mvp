@@ -1,5 +1,5 @@
-from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -31,16 +31,16 @@ class GoogleCalendarService:
         duration_minutes: int | None = None,
     ) -> list[AppointmentSlot]:
         duration = timedelta(minutes=duration_minutes or settings.estimate_duration_minutes)
-        timezone = ZoneInfo(settings.business_timezone)
+        timezone_info = self._business_timezone()
         day_start = datetime.combine(
             appointment_date,
             time(hour=settings.business_start_hour),
-            tzinfo=timezone,
+            tzinfo=timezone_info,
         )
         day_end = datetime.combine(
             appointment_date,
             time(hour=settings.business_end_hour),
-            tzinfo=timezone,
+            tzinfo=timezone_info,
         )
         busy_ranges = [] if self.demo_mode else self._busy_ranges(day_start, day_end)
 
@@ -143,14 +143,22 @@ class GoogleCalendarService:
         return {"dateTime": value.isoformat(), "timeZone": settings.business_timezone}
 
     def _with_business_timezone(self, value: datetime) -> datetime:
-        timezone = ZoneInfo(settings.business_timezone)
+        timezone_info = self._business_timezone()
         if value.tzinfo:
-            return value.astimezone(timezone)
-        return value.replace(tzinfo=timezone)
+            return value.astimezone(timezone_info)
+        return value.replace(tzinfo=timezone_info)
 
     def _parse_google_datetime(self, value: str) -> datetime:
         normalized = value.replace("Z", "+00:00")
-        return datetime.fromisoformat(normalized).astimezone(ZoneInfo(settings.business_timezone))
+        return datetime.fromisoformat(normalized).astimezone(self._business_timezone())
+
+    def _business_timezone(self):
+        try:
+            return ZoneInfo(settings.business_timezone)
+        except ZoneInfoNotFoundError:
+            if settings.business_timezone == "America/New_York":
+                return timezone(timedelta(hours=-4), name="America/New_York")
+            return timezone.utc
 
     def _description_from_lead(self, lead: LeadCapture) -> str:
         return "\n".join(
