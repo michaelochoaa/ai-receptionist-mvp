@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_name: str = "AI Receptionist MVP"
     app_env: str = "local"
     log_level: str = "INFO"
+    database_path: str = "data/leads.db"
 
     openai_api_key: str | None = None
     openai_model: str = "gpt-4.1-mini"

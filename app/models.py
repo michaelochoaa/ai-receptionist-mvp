@@ -52,3 +52,17 @@ class AppointmentRequest(BaseModel):
     lead: LeadCapture
     summary: str
     description: str | None = None
+
+
+class LeadRecord(BaseModel):
+    id: int
+    provider: CallProvider
+    call_id: str
+    caller_name: str | None = None
+    caller_phone: str | None = None
+    service_requested: str | None = None
+    preferred_start: datetime | None = None
+    preferred_end: datetime | None = None
+    notes: str | None = None
+    intent: ReceptionistIntent
+    created_at: datetime

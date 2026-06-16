@@ -10,6 +10,7 @@ This repository is scaffolded as a Python FastAPI service that can receive voice
 - Capture caller name, phone number, requested service, preferred appointment time, and notes
 - Use OpenAI to classify intent and produce receptionist responses
 - Check Google Calendar availability and create appointment events
+- Store captured leads in a local SQLite database
 - Provide health checks and simple integration seams for deployment
 
 ## Project structure
@@ -19,6 +20,7 @@ app/
   api/
     routes/
       health.py          # service health endpoint
+      leads.py           # captured lead listing endpoint
       vapi.py            # Vapi webhook endpoint
       twilio.py          # Twilio voice webhook endpoint
   core/
@@ -29,17 +31,23 @@ app/
       system.md          # receptionist behavior prompt
   services/
     calendar_service.py  # Google Calendar integration
+    lead_store.py        # SQLite lead persistence
     openai_service.py    # OpenAI integration
     twilio_service.py    # Twilio response helpers
     vapi_service.py      # Vapi event parsing helpers
   config.py              # environment-based settings
   main.py                # FastAPI application factory
   models.py              # shared Pydantic models
+samples/
+  vapi_webhook.json      # local Vapi webhook test payload
+scripts/
+  setup_env.ps1          # creates .env from .env.example
+  run_local.ps1          # runs the local FastAPI server
 tests/
   test_health.py
 ```
 
-## Quick start
+## Local setup
 
 1. Create a virtual environment:
 
@@ -54,25 +62,74 @@ tests/
    pip install -e ".[dev]"
    ```
 
-3. Copy environment defaults:
+3. Create your local `.env` file:
 
    ```powershell
-   Copy-Item .env.example .env
+   .\scripts\setup_env.ps1
    ```
 
-4. Fill in provider credentials in `.env`.
+4. For a local smoke test, you can leave provider keys blank. The app will still accept the sample webhook and store a basic lead record.
 
-5. Run the API:
-
-   ```powershell
-   uvicorn app.main:app --reload
-   ```
-
-6. Visit:
+5. To test real OpenAI responses, set this in `.env`:
 
    ```text
-   http://127.0.0.1:8000/health
+   OPENAI_API_KEY=your_api_key_here
    ```
+
+6. To test real Google Calendar booking later, set:
+
+   ```text
+   GOOGLE_CALENDAR_ID=your_calendar_id_here
+   GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\service-account.json
+   ```
+
+## Run locally
+
+Start the API:
+
+   ```powershell
+   .\scripts\run_local.ps1
+   ```
+
+The local run command starts:
+
+   ```text
+   http://127.0.0.1:8000
+   ```
+
+Useful local URLs:
+
+- Health check: `http://127.0.0.1:8000/health`
+- Leads: `http://127.0.0.1:8000/leads`
+- API docs: `http://127.0.0.1:8000/docs`
+
+## Test locally
+
+Run these commands in a second PowerShell window while the API is running.
+
+1. Confirm the server is healthy:
+
+   ```powershell
+   Invoke-RestMethod http://127.0.0.1:8000/health
+   ```
+
+2. Send the sample Vapi webhook payload:
+
+   ```powershell
+   Invoke-RestMethod `
+     -Method Post `
+     -Uri http://127.0.0.1:8000/webhooks/vapi `
+     -ContentType "application/json" `
+     -InFile .\samples\vapi_webhook.json
+   ```
+
+3. View captured leads:
+
+   ```powershell
+   Invoke-RestMethod http://127.0.0.1:8000/leads
+   ```
+
+The SQLite database is created automatically at `data/leads.db`. The `data/` directory is ignored by Git so local test data stays local.
 
 ## Provider setup checklist
 

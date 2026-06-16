@@ -1,0 +1,21 @@
+{
+  "message": {
+    "type": "transcript",
+    "call": {
+      "id": "local-vapi-call-001",
+      "customer": {
+        "number": "+15551234567"
+      }
+    },
+    "messages": [
+      {
+        "role": "assistant",
+        "message": "Thanks for calling. How can I help today?"
+      },
+      {
+        "role": "user",
+        "message": "Hi, this is Jamie Lee. I need a haircut appointment tomorrow afternoon. My number is 555-123-4567."
+      }
+    ]
+  }
+}
