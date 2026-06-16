@@ -26,10 +26,12 @@ class LeadStore:
                     preferred_end TEXT,
                     notes TEXT,
                     intent TEXT NOT NULL,
+                    google_calendar_event_id TEXT,
                     created_at TEXT NOT NULL
                 )
                 """
             )
+            self._add_column_if_missing(connection, "google_calendar_event_id", "TEXT")
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC)"
             )
@@ -57,9 +59,10 @@ class LeadStore:
                     preferred_end,
                     notes,
                     intent,
+                    google_calendar_event_id,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     request.provider.value,
@@ -71,10 +74,19 @@ class LeadStore:
                     self._datetime_to_text(lead.preferred_end),
                     lead.notes,
                     response.intent.value,
+                    None,
                     datetime.now(UTC).isoformat(),
                 ),
             )
             return int(cursor.lastrowid)
+
+    def update_calendar_event_id(self, lead_id: int, event_id: str) -> None:
+        self.initialize()
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE leads SET google_calendar_event_id = ? WHERE id = ?",
+                (event_id, lead_id),
+            )
 
     def list_leads(self, limit: int = 50) -> list[LeadRecord]:
         self.initialize()
@@ -92,6 +104,7 @@ class LeadStore:
                     preferred_end,
                     notes,
                     intent,
+                    google_calendar_event_id,
                     created_at
                 FROM leads
                 ORDER BY created_at DESC
@@ -142,8 +155,22 @@ class LeadStore:
             preferred_end=self._text_to_datetime(row["preferred_end"]),
             notes=row["notes"],
             intent=row["intent"],
+            google_calendar_event_id=row["google_calendar_event_id"],
             created_at=self._text_to_datetime(row["created_at"]) or datetime.now(UTC),
         )
+
+    def _add_column_if_missing(
+        self,
+        connection: sqlite3.Connection,
+        column_name: str,
+        column_type: str,
+    ) -> None:
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(leads)").fetchall()
+        }
+        if column_name not in columns:
+            connection.execute(f"ALTER TABLE leads ADD COLUMN {column_name} {column_type}")
 
     def _datetime_to_text(self, value: datetime | None) -> str | None:
         return value.isoformat() if value else None

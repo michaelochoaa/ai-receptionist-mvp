@@ -54,6 +54,11 @@ class AppointmentRequest(BaseModel):
     description: str | None = None
 
 
+class AppointmentSlot(BaseModel):
+    start: datetime
+    end: datetime
+
+
 class LeadRecord(BaseModel):
     id: int
     provider: CallProvider
@@ -65,4 +70,5 @@ class LeadRecord(BaseModel):
     preferred_end: datetime | None = None
     notes: str | None = None
     intent: ReceptionistIntent
+    google_calendar_event_id: str | None = None
     created_at: datetime

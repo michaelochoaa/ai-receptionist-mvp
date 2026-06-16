@@ -12,6 +12,7 @@ This repository is scaffolded as a Python FastAPI service that can receive voice
 - Check Google Calendar availability and create appointment events
 - Store captured leads in a local SQLite database
 - Notify the business owner by email when a lead is captured
+- Create Google Calendar events for estimate appointments when configured
 - Provide health checks and simple integration seams for deployment
 
 ## Project structure
@@ -21,6 +22,7 @@ app/
   api/
     routes/
       health.py          # service health endpoint
+      calendar.py        # Google Calendar availability endpoint
       leads.py           # captured lead listing endpoint
       vapi.py            # Vapi webhook endpoint
       twilio.py          # Twilio voice webhook endpoint
@@ -78,12 +80,25 @@ tests/
    OPENAI_API_KEY=your_api_key_here
    ```
 
-6. To test real Google Calendar booking later, set:
+6. To test real Google Calendar booking, set:
 
    ```text
    GOOGLE_CALENDAR_ID=your_calendar_id_here
    GOOGLE_APPLICATION_CREDENTIALS=C:\absolute\path\to\service-account.json
+   ESTIMATE_DURATION_MINUTES=60
+   BUSINESS_START_HOUR=9
+   BUSINESS_END_HOUR=17
    ```
+
+   Google Calendar setup:
+
+   - Create or choose a Google Cloud project.
+   - Enable the Google Calendar API.
+   - Create a service account and download its JSON key.
+   - Share the target Google Calendar with the service account email.
+   - Give the service account permission to make changes to events.
+   - Put the calendar ID in `GOOGLE_CALENDAR_ID`.
+   - Put the absolute path to the JSON key in `GOOGLE_APPLICATION_CREDENTIALS`.
 
 7. To send real owner email notifications, set:
 
@@ -116,6 +131,7 @@ Useful local URLs:
 
 - Health check: `http://127.0.0.1:8000/health`
 - Leads: `http://127.0.0.1:8000/leads`
+- Available slots: `http://127.0.0.1:8000/calendar/available-slots?appointment_date=2026-06-18`
 - API docs: `http://127.0.0.1:8000/docs`
 
 ## Test locally
@@ -144,7 +160,15 @@ Run these commands in a second PowerShell window while the API is running.
    Invoke-RestMethod http://127.0.0.1:8000/leads
    ```
 
+4. If Google Calendar is configured, view available estimate slots:
+
+   ```powershell
+   Invoke-RestMethod "http://127.0.0.1:8000/calendar/available-slots?appointment_date=2026-06-18"
+   ```
+
 The sample payload represents a painting company estimate request from Maria Gomez. The app should capture her name, phone number, exterior painting estimate service, June 18, 2026 at 2:00 PM preferred start time, June 18, 2026 at 3:00 PM preferred end time, and `book_appointment` intent.
+
+If Google Calendar is configured and that time is free, the app creates an estimate appointment event and stores the returned event ID on the lead as `google_calendar_event_id`. If the requested time overlaps an existing calendar event, the app logs that the slot is unavailable and does not create a duplicate event.
 
 When that lead is captured, the app also prepares an owner email summary with caller name, phone, service requested, preferred time, notes, and call ID. Without SMTP settings, the summary appears in the app logs.
 
@@ -155,7 +179,7 @@ The SQLite database is created automatically at `data/leads.db`. The `data/` dir
 - Vapi: point assistant or server webhooks to `/webhooks/vapi`
 - Twilio: point the phone number voice webhook to `/webhooks/twilio/voice`
 - OpenAI: set `OPENAI_API_KEY`
-- Google Calendar: set `GOOGLE_APPLICATION_CREDENTIALS` and `GOOGLE_CALENDAR_ID`
+- Google Calendar: set `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CALENDAR_ID`, business hours, and estimate duration
 - SMTP: set `SMTP_HOST`, `SMTP_FROM_EMAIL`, and `OWNER_EMAIL` to enable owner notifications
 
 For local webhook testing, expose the server with a tunnel such as ngrok and configure provider webhooks to the public tunnel URL.

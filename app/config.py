@@ -24,6 +24,9 @@ class Settings(BaseSettings):
 
     google_calendar_id: str | None = None
     google_application_credentials: str | None = None
+    estimate_duration_minutes: int = 60
+    business_start_hour: int = 9
+    business_end_hour: int = 17
 
     smtp_host: str | None = None
     smtp_port: int = 587

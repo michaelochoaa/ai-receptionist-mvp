@@ -18,6 +18,8 @@ def test_leads_endpoint_returns_list() -> None:
 def test_vapi_webhook_captures_painting_lead(tmp_path) -> None:
     settings.database_path = str(tmp_path / "leads.db")
     settings.openai_api_key = None
+    settings.google_calendar_id = None
+    settings.google_application_credentials = None
     client = TestClient(app)
 
     with open("samples/vapi_webhook.json", encoding="utf-8") as payload_file:
