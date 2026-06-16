@@ -70,5 +70,7 @@ class OpenAIReceptionistService:
                 "lead": merged_lead,
                 "should_book": ai_response.should_book or baseline.should_book,
                 "should_transfer": ai_response.should_transfer or baseline.should_transfer,
+                "calendar_event_id": ai_response.calendar_event_id or baseline.calendar_event_id,
+                "demo_mode": ai_response.demo_mode or baseline.demo_mode,
             }
         )

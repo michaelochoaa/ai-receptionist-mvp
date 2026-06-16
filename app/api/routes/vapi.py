@@ -28,4 +28,6 @@ async def receive_vapi_webhook(
         "intent": response.intent,
         "shouldBook": response.should_book,
         "shouldTransfer": response.should_transfer,
+        "calendarEventId": response.calendar_event_id,
+        "demoMode": response.demo_mode,
     }

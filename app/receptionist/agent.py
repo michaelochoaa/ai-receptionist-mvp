@@ -24,18 +24,18 @@ class ReceptionistAgent:
         lead_id = self.leads.save_from_receptionist(request, response)
 
         if lead_id is not None and response.should_book and response.intent == ReceptionistIntent.book_appointment:
-            await self._try_booking(lead_id, response)
+            response = await self._try_booking(lead_id, response)
 
         if lead_id is not None:
             self.notifications.notify_lead_captured(request, response)
 
         return response
 
-    async def _try_booking(self, lead_id: int, response: ReceptionistResponse) -> None:
-        if not self.calendar.is_configured():
-            logger.info("Skipping calendar booking because Google Calendar is not configured")
-            return
-
+    async def _try_booking(
+        self,
+        lead_id: int,
+        response: ReceptionistResponse,
+    ) -> ReceptionistResponse:
         appointment = AppointmentRequest(
             lead=response.lead,
             summary=self._appointment_summary(response),
@@ -45,11 +45,18 @@ class ReceptionistAgent:
             event = self.calendar.create_estimate_appointment(appointment)
         except CalendarSlotUnavailableError:
             logger.info("Skipping calendar booking because requested slot is unavailable")
-            return
+            return response
 
         event_id = event.get("id")
         if event_id:
             self.leads.update_calendar_event_id(lead_id, event_id)
+            return response.model_copy(
+                update={
+                    "calendar_event_id": event_id,
+                    "demo_mode": bool(event.get("demo_mode", False)),
+                }
+            )
+        return response
 
     def _appointment_summary(self, response: ReceptionistResponse) -> str:
         service = response.lead.service_requested or "Estimate"

@@ -30,6 +30,9 @@ def test_vapi_webhook_captures_painting_lead(tmp_path) -> None:
 
     assert webhook_response.status_code == 200
     assert leads_response.status_code == 200
+    webhook_body = webhook_response.json()
+    assert webhook_body["demoMode"] is True
+    assert webhook_body["calendarEventId"] == "demo-event-20260618T140000"
 
     leads = leads_response.json()
     assert len(leads) == 1
@@ -40,3 +43,4 @@ def test_vapi_webhook_captures_painting_lead(tmp_path) -> None:
     assert lead["preferred_start"] == "2026-06-18T14:00:00"
     assert lead["preferred_end"] == "2026-06-18T15:00:00"
     assert lead["intent"] == ReceptionistIntent.book_appointment.value
+    assert lead["google_calendar_event_id"] == "demo-event-20260618T140000"

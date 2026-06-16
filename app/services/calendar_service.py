@@ -21,12 +21,15 @@ class GoogleCalendarService:
     def is_configured(self) -> bool:
         return bool((self.calendar_id and self.credentials_path) or self._calendar_client_override)
 
+    @property
+    def demo_mode(self) -> bool:
+        return not self.is_configured()
+
     def available_slots(
         self,
         appointment_date: date,
         duration_minutes: int | None = None,
     ) -> list[AppointmentSlot]:
-        self._ensure_configured()
         duration = timedelta(minutes=duration_minutes or settings.estimate_duration_minutes)
         timezone = ZoneInfo(settings.business_timezone)
         day_start = datetime.combine(
@@ -39,7 +42,7 @@ class GoogleCalendarService:
             time(hour=settings.business_end_hour),
             tzinfo=timezone,
         )
-        busy_ranges = self._busy_ranges(day_start, day_end)
+        busy_ranges = [] if self.demo_mode else self._busy_ranges(day_start, day_end)
 
         slots: list[AppointmentSlot] = []
         slot_start = day_start
@@ -51,7 +54,8 @@ class GoogleCalendarService:
         return slots
 
     def is_available(self, start: datetime, end: datetime) -> bool:
-        self._ensure_configured()
+        if self.demo_mode:
+            return True
         start = self._with_business_timezone(start)
         end = self._with_business_timezone(end)
         return self._slot_is_free(start, end, self._busy_ranges(start, end))
@@ -62,6 +66,9 @@ class GoogleCalendarService:
 
         start = self._with_business_timezone(appointment.lead.preferred_start)
         end = self._with_business_timezone(appointment.lead.preferred_end)
+        if self.demo_mode:
+            return self._demo_event(appointment, start, end)
+
         if not self.is_available(start, end):
             raise CalendarSlotUnavailableError("Requested appointment slot is already booked")
 
@@ -74,6 +81,22 @@ class GoogleCalendarService:
             "attendees": [],
         }
         return service.events().insert(calendarId=self.calendar_id, body=event).execute()
+
+    def _demo_event(
+        self,
+        appointment: AppointmentRequest,
+        start: datetime,
+        end: datetime,
+    ) -> dict:
+        event_id = f"demo-event-{start.strftime('%Y%m%dT%H%M%S')}"
+        return {
+            "id": event_id,
+            "demo_mode": True,
+            "summary": appointment.summary,
+            "description": appointment.description or self._description_from_lead(appointment.lead),
+            "start": self._event_time(start),
+            "end": self._event_time(end),
+        }
 
     def _busy_ranges(self, start: datetime, end: datetime) -> list[tuple[datetime, datetime]]:
         service = self._calendar_client()

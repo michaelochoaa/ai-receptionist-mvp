@@ -12,7 +12,7 @@ This repository is scaffolded as a Python FastAPI service that can receive voice
 - Check Google Calendar availability and create appointment events
 - Store captured leads in a local SQLite database
 - Notify the business owner by email when a lead is captured
-- Create Google Calendar events for estimate appointments when configured
+- Create Google Calendar events for estimate appointments, with demo mode before credentials are connected
 - Provide health checks and simple integration seams for deployment
 
 ## Project structure
@@ -80,7 +80,16 @@ tests/
    OPENAI_API_KEY=your_api_key_here
    ```
 
-6. To test real Google Calendar booking, set:
+6. Google Calendar can run in demo mode or real mode.
+
+   Demo mode is automatic when `GOOGLE_CALENDAR_ID` or `GOOGLE_APPLICATION_CREDENTIALS` is blank. In demo mode:
+
+   - `/calendar/available-slots` returns sample slots from your configured business hours.
+   - Captured estimate requests receive a fake event ID like `demo-event-20260618T140000`.
+   - Responses clearly include `demo_mode: true` where calendar availability is returned.
+   - No Google API calls are made.
+
+   To use real Google Calendar mode, set:
 
    ```text
    GOOGLE_CALENDAR_ID=your_calendar_id_here
@@ -160,15 +169,17 @@ Run these commands in a second PowerShell window while the API is running.
    Invoke-RestMethod http://127.0.0.1:8000/leads
    ```
 
-4. If Google Calendar is configured, view available estimate slots:
+4. View available estimate slots:
 
    ```powershell
    Invoke-RestMethod "http://127.0.0.1:8000/calendar/available-slots?appointment_date=2026-06-18"
    ```
 
+   Without Google credentials, this returns demo slots and `demo_mode: true`. With Google credentials, this returns real open slots after checking Google Calendar free/busy data.
+
 The sample payload represents a painting company estimate request from Maria Gomez. The app should capture her name, phone number, exterior painting estimate service, June 18, 2026 at 2:00 PM preferred start time, June 18, 2026 at 3:00 PM preferred end time, and `book_appointment` intent.
 
-If Google Calendar is configured and that time is free, the app creates an estimate appointment event and stores the returned event ID on the lead as `google_calendar_event_id`. If the requested time overlaps an existing calendar event, the app logs that the slot is unavailable and does not create a duplicate event.
+In demo mode, the app stores a fake event ID on the lead as `google_calendar_event_id`, and the Vapi webhook response includes `demoMode: true` plus `calendarEventId`. In real Google Calendar mode, if the requested time is free, the app creates an estimate appointment event and stores the returned Google event ID. If the requested time overlaps an existing calendar event, the app logs that the slot is unavailable and does not create a duplicate event.
 
 When that lead is captured, the app also prepares an owner email summary with caller name, phone, service requested, preferred time, notes, and call ID. Without SMTP settings, the summary appears in the app logs.
 

@@ -46,6 +46,8 @@ class ReceptionistResponse(BaseModel):
     lead: LeadCapture = Field(default_factory=LeadCapture)
     should_book: bool = False
     should_transfer: bool = False
+    calendar_event_id: str | None = None
+    demo_mode: bool = False
 
 
 class AppointmentRequest(BaseModel):
@@ -57,6 +59,11 @@ class AppointmentRequest(BaseModel):
 class AppointmentSlot(BaseModel):
     start: datetime
     end: datetime
+
+
+class CalendarAvailabilityResponse(BaseModel):
+    demo_mode: bool
+    slots: list[AppointmentSlot]
 
 
 class LeadRecord(BaseModel):
