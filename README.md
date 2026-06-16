@@ -216,6 +216,132 @@ The SQLite database is created automatically at `data/leads.db`. The `data/` dir
 
 For local webhook testing, expose the server with a tunnel such as ngrok and configure provider webhooks to the public tunnel URL.
 
+## Vapi live demo setup
+
+Use this flow when you are ready to test the MVP with a real phone call through Vapi.
+
+1. Start the local API:
+
+   ```powershell
+   .\scripts\run_local.ps1
+   ```
+
+2. Expose the local server with a public HTTPS tunnel:
+
+   ```powershell
+   ngrok http 8000
+   ```
+
+3. Copy the HTTPS forwarding URL from ngrok. It will look like:
+
+   ```text
+   https://abc123.ngrok-free.app
+   ```
+
+4. In Vapi, set the assistant server/webhook URL to:
+
+   ```text
+   https://abc123.ngrok-free.app/webhooks/vapi
+   ```
+
+5. If `VAPI_WEBHOOK_SECRET` is set in `.env`, configure Vapi to send the same value in the `x-vapi-secret` header. For the simplest demo, leave `VAPI_WEBHOOK_SECRET` blank.
+
+6. In Vapi, connect the assistant to a phone number and place a test call.
+
+During the demo, leave Google Calendar credentials blank if you want demo mode. The app will still create demo event IDs and show leads in the dashboard.
+
+## Vapi webhook URL format
+
+Local URL:
+
+```text
+http://127.0.0.1:8000/webhooks/vapi
+```
+
+Public demo URL through ngrok:
+
+```text
+https://YOUR-NGROK-SUBDOMAIN.ngrok-free.app/webhooks/vapi
+```
+
+Production URL:
+
+```text
+https://YOUR-DOMAIN.com/webhooks/vapi
+```
+
+The endpoint accepts Vapi call/transcript webhook payloads and returns a JSON response with the receptionist message, intent, booking flags, calendar event ID, and demo mode flag.
+
+## Sample Vapi assistant prompt
+
+Use this as the assistant system prompt for an Ochoa Painting demo:
+
+```text
+You are the friendly phone receptionist for Ochoa Painting.
+
+Your job is to help callers request painting estimates. Keep responses short, warm, and natural for a phone call.
+
+Collect these details:
+- Caller name
+- Best phone number
+- Service requested, such as interior painting, exterior painting, cabinet painting, drywall repair, or a painting estimate
+- Preferred day and time for an estimate
+- Brief notes about the project
+
+If the caller asks for an estimate, ask one question at a time until you have the name, phone number, service, and preferred time.
+
+Do not promise that the appointment is confirmed. Say that you will pass the request to the owner for follow-up.
+
+Example closing:
+"Thanks, I have your estimate request. Someone from Ochoa Painting will follow up to confirm the appointment."
+```
+
+## Phone call demo script
+
+Use this simple script when calling the Vapi number:
+
+```text
+Assistant: Thanks for calling Ochoa Painting. How can I help today?
+
+Caller: Hi, this is Maria Gomez. I need an estimate for exterior painting.
+
+Assistant: I can help with that. What is the best phone number for you?
+
+Caller: 555-321-7890.
+
+Assistant: What day and time would you prefer for the estimate?
+
+Caller: June 18, 2026 at 2 PM.
+
+Assistant: Great. Any quick notes about the project?
+
+Caller: It is a two-story house and the trim needs repainting.
+
+Assistant: Thanks, I have your estimate request. Someone from Ochoa Painting will follow up to confirm the appointment.
+```
+
+After the call:
+
+1. Open the dashboard:
+
+   ```text
+   http://127.0.0.1:8000/dashboard
+   ```
+
+2. Confirm the lead appears with the caller name, phone, service, appointment time, status, and created date.
+
+3. If SMTP is configured, confirm the owner received the lead summary email.
+
+## Vapi webhook troubleshooting
+
+- If Vapi shows webhook failures, confirm the API is running at `http://127.0.0.1:8000/health`.
+- If Vapi cannot reach the webhook, confirm ngrok is still running and that the Vapi webhook URL uses the current HTTPS ngrok URL.
+- If the app returns `401`, either remove `VAPI_WEBHOOK_SECRET` from `.env` for the demo or configure Vapi to send the matching `x-vapi-secret` header.
+- If no lead appears in `/dashboard`, check the app terminal logs and confirm Vapi is sending transcript messages in the webhook payload.
+- If the call works but calendar booking looks fake, that is expected in demo mode when Google Calendar credentials are blank.
+- If ngrok says the tunnel is offline, restart `ngrok http 8000` and update the webhook URL in Vapi.
+- If you changed `.env`, restart the local API so the new environment values are loaded.
+
 ## Environment
 
 See `.env.example` for all configuration values.
