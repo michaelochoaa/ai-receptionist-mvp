@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import calendar, health, leads, twilio, vapi
+from app.api.routes import calendar, dashboard, health, leads, twilio, vapi
 from app.config import settings
 from app.core.logging import configure_logging
 from app.services.lead_store import LeadStore
@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     api.include_router(calendar.router)
+    api.include_router(dashboard.router)
     api.include_router(health.router)
     api.include_router(leads.router)
     api.include_router(vapi.router)

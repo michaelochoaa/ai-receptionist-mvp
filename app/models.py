@@ -18,6 +18,13 @@ class ReceptionistIntent(StrEnum):
     unknown = "unknown"
 
 
+class LeadStatus(StrEnum):
+    new = "New"
+    contacted = "Contacted"
+    scheduled = "Scheduled"
+    closed = "Closed"
+
+
 class LeadCapture(BaseModel):
     caller_name: str | None = None
     caller_phone: str | None = None
@@ -78,4 +85,5 @@ class LeadRecord(BaseModel):
     notes: str | None = None
     intent: ReceptionistIntent
     google_calendar_event_id: str | None = None
+    status: LeadStatus = LeadStatus.new
     created_at: datetime

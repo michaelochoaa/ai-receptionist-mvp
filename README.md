@@ -11,6 +11,7 @@ This repository is scaffolded as a Python FastAPI service that can receive voice
 - Use OpenAI to classify intent and produce receptionist responses
 - Check Google Calendar availability and create appointment events
 - Store captured leads in a local SQLite database
+- View captured leads in a simple local dashboard
 - Notify the business owner by email when a lead is captured
 - Create Google Calendar events for estimate appointments, with demo mode before credentials are connected
 - Provide health checks and simple integration seams for deployment
@@ -23,6 +24,7 @@ app/
     routes/
       health.py          # service health endpoint
       calendar.py        # Google Calendar availability endpoint
+      dashboard.py       # simple HTML lead dashboard
       leads.py           # captured lead listing endpoint
       vapi.py            # Vapi webhook endpoint
       twilio.py          # Twilio voice webhook endpoint
@@ -140,6 +142,7 @@ Useful local URLs:
 
 - Health check: `http://127.0.0.1:8000/health`
 - Leads: `http://127.0.0.1:8000/leads`
+- Dashboard: `http://127.0.0.1:8000/dashboard`
 - Available slots: `http://127.0.0.1:8000/calendar/available-slots?appointment_date=2026-06-18`
 - API docs: `http://127.0.0.1:8000/docs`
 
@@ -169,7 +172,25 @@ Run these commands in a second PowerShell window while the API is running.
    Invoke-RestMethod http://127.0.0.1:8000/leads
    ```
 
-4. View available estimate slots:
+4. Open the demo dashboard:
+
+   ```text
+   http://127.0.0.1:8000/dashboard
+   ```
+
+   The dashboard shows all leads in a table with name, phone, service, appointment time, status, and created date. Status values are `New`, `Contacted`, `Scheduled`, and `Closed`.
+
+5. Update a lead status from PowerShell:
+
+   ```powershell
+   Invoke-RestMethod `
+     -Method Post `
+     -Uri http://127.0.0.1:8000/leads/1/status `
+     -ContentType "application/x-www-form-urlencoded" `
+     -Body @{ status = "Contacted" }
+   ```
+
+6. View available estimate slots:
 
    ```powershell
    Invoke-RestMethod "http://127.0.0.1:8000/calendar/available-slots?appointment_date=2026-06-18"

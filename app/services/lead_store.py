@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import settings
-from app.models import LeadCapture, LeadRecord, ReceptionistRequest, ReceptionistResponse
+from app.models import LeadCapture, LeadRecord, LeadStatus, ReceptionistRequest, ReceptionistResponse
 
 
 class LeadStore:
@@ -27,11 +27,13 @@ class LeadStore:
                     notes TEXT,
                     intent TEXT NOT NULL,
                     google_calendar_event_id TEXT,
+                    status TEXT NOT NULL DEFAULT 'New',
                     created_at TEXT NOT NULL
                 )
                 """
             )
             self._add_column_if_missing(connection, "google_calendar_event_id", "TEXT")
+            self._add_column_if_missing(connection, "status", "TEXT NOT NULL DEFAULT 'New'")
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC)"
             )
@@ -60,9 +62,10 @@ class LeadStore:
                     notes,
                     intent,
                     google_calendar_event_id,
+                    status,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     request.provider.value,
@@ -75,6 +78,7 @@ class LeadStore:
                     lead.notes,
                     response.intent.value,
                     None,
+                    LeadStatus.new.value,
                     datetime.now(UTC).isoformat(),
                 ),
             )
@@ -87,6 +91,15 @@ class LeadStore:
                 "UPDATE leads SET google_calendar_event_id = ? WHERE id = ?",
                 (event_id, lead_id),
             )
+
+    def update_status(self, lead_id: int, status: LeadStatus) -> bool:
+        self.initialize()
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE leads SET status = ? WHERE id = ?",
+                (status.value, lead_id),
+            )
+            return cursor.rowcount > 0
 
     def list_leads(self, limit: int = 50) -> list[LeadRecord]:
         self.initialize()
@@ -105,6 +118,7 @@ class LeadStore:
                     notes,
                     intent,
                     google_calendar_event_id,
+                    status,
                     created_at
                 FROM leads
                 ORDER BY created_at DESC
@@ -156,6 +170,7 @@ class LeadStore:
             notes=row["notes"],
             intent=row["intent"],
             google_calendar_event_id=row["google_calendar_event_id"],
+            status=row["status"] or LeadStatus.new.value,
             created_at=self._text_to_datetime(row["created_at"]) or datetime.now(UTC),
         )
 
