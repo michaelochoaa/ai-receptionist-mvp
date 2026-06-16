@@ -129,6 +129,8 @@ Run these commands in a second PowerShell window while the API is running.
    Invoke-RestMethod http://127.0.0.1:8000/leads
    ```
 
+The sample payload represents a painting company estimate request from Maria Gomez. The app should capture her name, phone number, exterior painting estimate service, June 18, 2026 at 2:00 PM preferred start time, June 18, 2026 at 3:00 PM preferred end time, and `book_appointment` intent.
+
 The SQLite database is created automatically at `data/leads.db`. The `data/` directory is ignored by Git so local test data stays local.
 
 ## Provider setup checklist

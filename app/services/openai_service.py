@@ -4,7 +4,7 @@ from pathlib import Path
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.models import ReceptionistIntent, ReceptionistRequest, ReceptionistResponse
+from app.models import LeadCapture, ReceptionistIntent, ReceptionistRequest, ReceptionistResponse
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "receptionist" / "prompts" / "system.md"
 
@@ -13,12 +13,16 @@ class OpenAIReceptionistService:
     def __init__(self) -> None:
         self.client = AsyncOpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
 
-    async def complete(self, request: ReceptionistRequest) -> ReceptionistResponse:
+    def is_configured(self) -> bool:
+        return self.client is not None
+
+    async def complete(
+        self,
+        request: ReceptionistRequest,
+        baseline: ReceptionistResponse,
+    ) -> ReceptionistResponse:
         if not self.client:
-            return ReceptionistResponse(
-                intent=ReceptionistIntent.unknown,
-                message="Thanks for calling. I can help collect your details for an appointment.",
-            )
+            return baseline
 
         system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
         transcript = "\n".join(f"{turn.role}: {turn.content}" for turn in request.transcript)
@@ -37,4 +41,34 @@ class OpenAIReceptionistService:
             ],
         )
         content = completion.choices[0].message.content or "{}"
-        return ReceptionistResponse.model_validate(json.loads(content))
+        ai_response = ReceptionistResponse.model_validate(json.loads(content))
+        return self._merge_responses(baseline, ai_response)
+
+    def _merge_responses(
+        self,
+        baseline: ReceptionistResponse,
+        ai_response: ReceptionistResponse,
+    ) -> ReceptionistResponse:
+        ai_lead = ai_response.lead
+        base_lead = baseline.lead
+        merged_lead = LeadCapture(
+            caller_name=ai_lead.caller_name or base_lead.caller_name,
+            caller_phone=ai_lead.caller_phone or base_lead.caller_phone,
+            service_requested=ai_lead.service_requested or base_lead.service_requested,
+            preferred_start=ai_lead.preferred_start or base_lead.preferred_start,
+            preferred_end=ai_lead.preferred_end or base_lead.preferred_end,
+            notes=ai_lead.notes or base_lead.notes,
+        )
+        intent = (
+            baseline.intent
+            if ai_response.intent == ReceptionistIntent.unknown and baseline.intent != ReceptionistIntent.unknown
+            else ai_response.intent
+        )
+        return ai_response.model_copy(
+            update={
+                "intent": intent,
+                "lead": merged_lead,
+                "should_book": ai_response.should_book or baseline.should_book,
+                "should_transfer": ai_response.should_transfer or baseline.should_transfer,
+            }
+        )
